@@ -11,8 +11,17 @@ import java.awt.*;
 public class Main {
     public static void main(String[] args) {
         DatabaseConnection.initializeDatabase();
-        DatabaseConnection.recreateTables();
+//        DatabaseConnection.recreateTables();
         System.out.println("Incident Management System initialized!");
+        SwingUtilities.invokeLater(() -> {
+            try {
+                UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+
+            new LoginUI().setVisible(true);
+        });
     }
 }
 

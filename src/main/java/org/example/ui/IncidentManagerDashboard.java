@@ -3,18 +3,25 @@ package org.example.ui;
 // src/IncidentFrame.java
 import org.example.dao.ApplicationDao;
 import org.example.dao.IncidentDao;
+import org.example.dao.RcaDetails;
 import org.example.dao.UserDao;
+import org.example.database.DatabaseConnection;
 import org.example.model.Incident;
 import org.example.model.User;
 
 import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.SQLException;
 import java.text.SimpleDateFormat;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.Date;
 import java.util.List;
 import java.awt.*;
 
-public class IncidentManagerDashboard extends JFrame {
+public class  IncidentManagerDashboard extends JFrame {
     private User currentUser;
     private IncidentDao incidentDao;
     private ApplicationDao applicationDao;
@@ -27,6 +34,9 @@ public class IncidentManagerDashboard extends JFrame {
     private DefaultTableModel incidentsTableModel;
     private JTable myIncidentsTable;
     private DefaultTableModel myIncidentsTableModel;
+    private final Color BURGUNDY_PRIMARY = new Color(151, 20, 77);
+    private final Color BURGUNDY_DARK    = new Color(120, 16, 61);
+    private final Color BURGUNDY_LIGHT   = new Color(180, 40, 100);
 
     public IncidentManagerDashboard(User user) {
         this.currentUser = user;
@@ -49,8 +59,8 @@ public class IncidentManagerDashboard extends JFrame {
             protected void paintComponent(Graphics g) {
                 super.paintComponent(g);
                 Graphics2D g2d = (Graphics2D) g;
-                Color color1 = new Color(248, 248, 255);
-                Color color2 = new Color(240, 248, 255);
+                Color color1 = new Color(255, 255, 255);
+                Color color2 = new Color(245, 230, 235);
                 GradientPaint gp = new GradientPaint(0, 0, color1, getWidth(), getHeight(), color2);
                 g2d.setPaint(gp);
                 g2d.fillRect(0, 0, getWidth(), getHeight());
@@ -59,7 +69,7 @@ public class IncidentManagerDashboard extends JFrame {
 
         // Header panel
         JPanel headerPanel = new JPanel(new BorderLayout());
-        headerPanel.setBackground(new Color(25, 25, 112));
+        headerPanel.setBackground(BURGUNDY_PRIMARY);
         headerPanel.setBorder(BorderFactory.createEmptyBorder(15, 25, 15, 25));
         headerPanel.setPreferredSize(new Dimension(1300, 100));
 
@@ -73,7 +83,7 @@ public class IncidentManagerDashboard extends JFrame {
 
         JLabel userLabel = new JLabel("Welcome, " + currentUser.getUsername() + " (" + currentUser.getFullName() + ")");
         userLabel.setFont(new Font("Segoe UI", Font.PLAIN, 14));
-        userLabel.setForeground(new Color(200, 200, 255));
+        userLabel.setForeground(new Color(245, 235, 240));
 
         welcomePanel.add(welcomeLabel);
         welcomePanel.add(userLabel);
@@ -117,7 +127,7 @@ public class IncidentManagerDashboard extends JFrame {
 
         // Navigation panel
         JPanel navPanel = new JPanel(new BorderLayout(0, 0));
-        navPanel.setBackground(new Color(30, 30, 70));
+        navPanel.setBackground(BURGUNDY_DARK);
         navPanel.setPreferredSize(new Dimension(220, 0));
         navPanel.setBorder(BorderFactory.createEmptyBorder(20, 10, 20, 10));
 
@@ -128,14 +138,14 @@ public class IncidentManagerDashboard extends JFrame {
         navTitle.setHorizontalAlignment(SwingConstants.CENTER);
 
         JPanel buttonPanel = new JPanel(new GridLayout(6, 1, 0, 15));
-        buttonPanel.setBackground(new Color(30, 30, 70));
+        buttonPanel.setBackground(BURGUNDY_DARK);
         buttonPanel.setBorder(BorderFactory.createEmptyBorder(20, 0, 20, 0));
 
         // Navigation buttons
         JButton dashboardBtn = createNavButton("🏠 Dashboard", new Color(70, 130, 180));
         dashboardBtn.addActionListener(e -> showDashboard());
 
-        JButton createIncidentBtn = createNavButton("➕ Create Incident", new Color(60, 179, 113));
+        JButton createIncidentBtn = createNavButton("➕ Create Incident", BURGUNDY_PRIMARY);
         createIncidentBtn.addActionListener(e -> showCreateIncidentForm());
 
         JButton allIncidentsBtn = createNavButton("📋 All Incidents", new Color(30, 144, 255));
@@ -147,7 +157,7 @@ public class IncidentManagerDashboard extends JFrame {
         JButton assignedIncidentsBtn = createNavButton("👥 Assigned Incidents", new Color(255, 140, 0));
         assignedIncidentsBtn.addActionListener(e -> showAssignedIncidents());
 
-        JButton rcaManagementBtn = createNavButton("🔍 RCA Management", new Color(46, 139, 87));
+        JButton rcaManagementBtn = createNavButton("🔍 RCA Management",BURGUNDY_PRIMARY);
         rcaManagementBtn.addActionListener(e -> showRcaManagement());
 
         buttonPanel.add(dashboardBtn);
@@ -229,7 +239,7 @@ public class IncidentManagerDashboard extends JFrame {
         quickActionsPanel.setOpaque(false);
         quickActionsPanel.setBorder(BorderFactory.createEmptyBorder(20, 50, 20, 50));
 
-        JButton quickCreateIncident = createQuickActionButton("➕ Create New Incident", new Color(60, 179, 113));
+        JButton quickCreateIncident = createQuickActionButton("➕ Create New Incident", BURGUNDY_PRIMARY);
         quickCreateIncident.addActionListener(e -> showCreateIncidentForm());
 
         JButton quickViewAll = createQuickActionButton("👁️ View All Incidents", new Color(30, 144, 255));
@@ -238,7 +248,7 @@ public class IncidentManagerDashboard extends JFrame {
         JButton quickViewMy = createQuickActionButton("📝 View My Incidents", new Color(138, 43, 226));
         quickViewMy.addActionListener(e -> showMyIncidents());
 
-        JButton quickRCA = createQuickActionButton("🔍 Manage RCA", new Color(46, 139, 87));
+        JButton quickRCA = createQuickActionButton("🔍 Manage RCA", BURGUNDY_PRIMARY);
         quickRCA.addActionListener(e -> showRcaManagement());
 
         quickActionsPanel.add(quickCreateIncident);
@@ -625,10 +635,10 @@ public class IncidentManagerDashboard extends JFrame {
         viewRcaButton.addActionListener(e -> viewRcaReports());
 
         JButton addRcaButton = createQuickActionButton("➕ Add RCA to Incident", new Color(60, 179, 113));
-        addRcaButton.addActionListener(e -> addRcaToIncident());
+        addRcaButton.addActionListener(e -> openAddRcaDialog());   // CHANGED
 
-        JButton publishRcaButton = createQuickActionButton("📢 Publish RCA", new Color(30, 144, 255));
-        publishRcaButton.addActionListener(e -> publishRca());
+        JButton publishRcaButton = createQuickActionButton("📢 Publish RCA", BURGUNDY_PRIMARY);
+        publishRcaButton.addActionListener(e -> openPublishRcaDialog());  // CHANGED
 
         rcaPanel.add(viewRcaButton);
         rcaPanel.add(addRcaButton);
@@ -1210,6 +1220,9 @@ public class IncidentManagerDashboard extends JFrame {
         rcaDialog.setLayout(new BorderLayout(10, 10));
 
         JPanel formPanel = new JPanel(new GridBagLayout());
+        formPanel.setBackground(new Color(255, 255, 255));
+        formPanel.setBorder(BorderFactory.createEmptyBorder(15, 15, 15, 15));
+
         GridBagConstraints gbc = new GridBagConstraints();
         gbc.insets = new Insets(10, 10, 10, 10);
         gbc.fill = GridBagConstraints.HORIZONTAL;
@@ -1225,55 +1238,96 @@ public class IncidentManagerDashboard extends JFrame {
         gbc.gridwidth = 1;
         gbc.gridy = 1;
         gbc.gridx = 0;
-        formPanel.add(new JLabel("Root Cause:"), gbc);
+        JLabel rootLbl = new JLabel("Root Cause:");
+        rootLbl.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+        formPanel.add(rootLbl, gbc);
 
         gbc.gridx = 1;
         JTextArea rootCauseArea = new JTextArea(4, 30);
         rootCauseArea.setLineWrap(true);
         rootCauseArea.setWrapStyleWord(true);
+        rootCauseArea.setFont(new Font("Segoe UI", Font.PLAIN, 12));
         formPanel.add(new JScrollPane(rootCauseArea), gbc);
 
         gbc.gridy = 2;
         gbc.gridx = 0;
-        formPanel.add(new JLabel("Permanent Fix:"), gbc);
-
-        gbc.gridx = 1;
-        JTextArea permanentFixArea = new JTextArea(4, 30);
-        permanentFixArea.setLineWrap(true);
-        permanentFixArea.setWrapStyleWord(true);
-        formPanel.add(new JScrollPane(permanentFixArea), gbc);
-
-        gbc.gridy = 3;
-        gbc.gridx = 0;
-        formPanel.add(new JLabel("Preventive Measures:"), gbc);
+        JLabel preventiveLbl = new JLabel("Preventive Measures:");
+        preventiveLbl.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+        formPanel.add(preventiveLbl, gbc);
 
         gbc.gridx = 1;
         JTextArea preventiveArea = new JTextArea(4, 30);
         preventiveArea.setLineWrap(true);
         preventiveArea.setWrapStyleWord(true);
+        preventiveArea.setFont(new Font("Segoe UI", Font.PLAIN, 12));
         formPanel.add(new JScrollPane(preventiveArea), gbc);
 
-        JPanel buttonPanel = new JPanel();
-        JButton saveButton = new JButton("Save RCA");
-        saveButton.addActionListener(e -> {
-            // Save RCA logic here
-            JOptionPane.showMessageDialog(rcaDialog,
-                    "RCA saved successfully for Incident ID: " + incidentId,
-                    "Success",
-                    JOptionPane.INFORMATION_MESSAGE);
-            rcaDialog.dispose();
-        });
+        rcaDialog.add(formPanel, BorderLayout.CENTER);
 
-        JButton cancelButton = new JButton("Cancel");
+        JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 10));
+        buttonPanel.setBackground(new Color(248, 248, 255));
+
+        JButton cancelButton = createActionButton("Cancel", new Color(220, 20, 60));
         cancelButton.addActionListener(e -> rcaDialog.dispose());
 
-        buttonPanel.add(saveButton);
-        buttonPanel.add(cancelButton);
+        JButton saveButton = createActionButton("Save RCA (Draft)", new Color(46, 139, 87));
+        saveButton.addActionListener(e -> {
+            String root = rootCauseArea.getText().trim();
+            String prev = preventiveArea.getText().trim();
 
-        rcaDialog.add(formPanel, BorderLayout.CENTER);
+            if (root.isEmpty()) {
+                JOptionPane.showMessageDialog(rcaDialog,
+                        "Root Cause is mandatory.",
+                        "Validation Error",
+                        JOptionPane.WARNING_MESSAGE);
+                return;
+            }
+
+            String sql = """
+            INSERT OR REPLACE INTO rca
+            (incident_id, root_cause, permanent_fix, preventive_measures,
+             created_by, created_at, published, published_date)
+            VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP, 0, NULL)
+        """;
+
+            try (Connection conn = DatabaseConnection.getConnection();
+                 PreparedStatement pstmt = conn.prepareStatement(sql)) {
+
+                pstmt.setInt(1, incidentId);
+                pstmt.setString(2, root);
+                pstmt.setString(3, ""); // permanent fix will come from L3 / later
+                pstmt.setString(4, prev);
+                pstmt.setInt(5, currentUser.getId());
+
+                int rows = pstmt.executeUpdate();
+                if (rows > 0) {
+                    JOptionPane.showMessageDialog(rcaDialog,
+                            "RCA draft saved for Incident #" + incidentId,
+                            "Success",
+                            JOptionPane.INFORMATION_MESSAGE);
+                    rcaDialog.dispose();
+                } else {
+                    JOptionPane.showMessageDialog(rcaDialog,
+                            "Failed to save RCA draft.",
+                            "Error",
+                            JOptionPane.ERROR_MESSAGE);
+                }
+
+            } catch (SQLException ex1) {
+                JOptionPane.showMessageDialog(rcaDialog,
+                        "Database error while saving RCA: " + ex1.getMessage(),
+                        "DB Error",
+                        JOptionPane.ERROR_MESSAGE);
+            }
+        });
+
+        buttonPanel.add(cancelButton);
+        buttonPanel.add(saveButton);
+
         rcaDialog.add(buttonPanel, BorderLayout.SOUTH);
         rcaDialog.setVisible(true);
     }
+
 
     private void publishRca() {
         JOptionPane.showMessageDialog(this,
@@ -1299,5 +1353,333 @@ public class IncidentManagerDashboard extends JFrame {
 
             return c;
         }
+    }
+
+    private void openAddRcaDialog() {
+        // Ask IM which incident to work on
+        String idText = JOptionPane.showInputDialog(
+                this,
+                "Enter Incident ID to add/edit RCA:",
+                "Add RCA to Incident",
+                JOptionPane.QUESTION_MESSAGE
+        );
+
+        if (idText == null || idText.trim().isEmpty()) {
+            return;
+        }
+
+        int incidentId;
+        try {
+            incidentId = Integer.parseInt(idText.trim());
+        } catch (NumberFormatException ex) {
+            JOptionPane.showMessageDialog(this,
+                    "Invalid Incident ID.",
+                    "Error",
+                    JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+
+        Incident incident = incidentDao.getIncidentById(incidentId);
+        if (incident == null) {
+            JOptionPane.showMessageDialog(this,
+                    "Incident not found.",
+                    "Error",
+                    JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+
+        // Dialog UI
+        JDialog rcaDialog = new JDialog(this, "Add RCA - Incident #" + incidentId, true);
+        rcaDialog.setSize(700, 500);
+        rcaDialog.setLocationRelativeTo(this);
+        rcaDialog.setLayout(new BorderLayout(10, 10));
+
+        JPanel formPanel = new JPanel(new GridBagLayout());
+        formPanel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
+        formPanel.setBackground(Color.WHITE);
+
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.insets = new Insets(10, 10, 10, 10);
+        gbc.fill = GridBagConstraints.BOTH;
+        gbc.gridx = 0;
+        gbc.gridy = 0;
+        gbc.gridwidth = 2;
+
+        JTextArea rootCauseArea = new JTextArea(4, 40);
+        rootCauseArea.setLineWrap(true);
+        rootCauseArea.setWrapStyleWord(true);
+        rootCauseArea.setBorder(BorderFactory.createTitledBorder("Root Cause"));
+
+        JTextArea permanentFixArea = new JTextArea(4, 40);
+        permanentFixArea.setLineWrap(true);
+        permanentFixArea.setWrapStyleWord(true);
+        permanentFixArea.setBorder(BorderFactory.createTitledBorder("Permanent Fix (from L3)"));
+        permanentFixArea.setText(
+                incident.getPermanentSolution() != null ? incident.getPermanentSolution() : ""
+        );
+
+        JTextArea preventiveArea = new JTextArea(4, 40);
+        preventiveArea.setLineWrap(true);
+        preventiveArea.setWrapStyleWord(true);
+        preventiveArea.setBorder(BorderFactory.createTitledBorder("Preventive Measures"));
+
+        formPanel.add(new JScrollPane(rootCauseArea), gbc);
+        gbc.gridy++;
+        formPanel.add(new JScrollPane(permanentFixArea), gbc);
+        gbc.gridy++;
+        formPanel.add(new JScrollPane(preventiveArea), gbc);
+
+        JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 10));
+        JButton saveButton = new JButton("Save RCA (Draft)");
+        JButton cancelButton = new JButton("Cancel");
+
+        saveButton.addActionListener(e -> {
+            String root = rootCauseArea.getText().trim();
+            String perm = permanentFixArea.getText().trim();
+            String prev = preventiveArea.getText().trim();
+
+            if (root.isEmpty() || perm.isEmpty()) {
+                JOptionPane.showMessageDialog(rcaDialog,
+                        "Root Cause and Permanent Fix are mandatory.",
+                        "Validation Error",
+                        JOptionPane.WARNING_MESSAGE);
+                return;
+            }
+
+            // Save into rca table as draft (published = 0)
+            String sql = """
+            INSERT OR REPLACE INTO rca
+            (incident_id, root_cause, permanent_fix, preventive_measures,
+             created_by, created_at, published, published_date)
+            VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP, 0, NULL)
+        """;
+
+            try (Connection conn = DatabaseConnection.getConnection();
+                 PreparedStatement pstmt = conn.prepareStatement(sql)) {
+
+                pstmt.setInt(1, incidentId);
+                pstmt.setString(2, root);
+                pstmt.setString(3, perm);
+                pstmt.setString(4, prev);
+                pstmt.setInt(5, currentUser.getId());
+
+                int rows = pstmt.executeUpdate();
+                if (rows > 0) {
+                    JOptionPane.showMessageDialog(rcaDialog,
+                            "RCA draft saved for Incident #" + incidentId,
+                            "Success",
+                            JOptionPane.INFORMATION_MESSAGE);
+                    rcaDialog.dispose();
+                } else {
+                    JOptionPane.showMessageDialog(rcaDialog,
+                            "Failed to save RCA draft.",
+                            "Error",
+                            JOptionPane.ERROR_MESSAGE);
+                }
+
+            } catch (SQLException ex1) {
+                JOptionPane.showMessageDialog(rcaDialog,
+                        "Database error while saving RCA: " + ex1.getMessage(),
+                        "DB Error",
+                        JOptionPane.ERROR_MESSAGE);
+            }
+        });
+
+        cancelButton.addActionListener(e -> rcaDialog.dispose());
+
+        buttonPanel.add(cancelButton);
+        buttonPanel.add(saveButton);
+
+        rcaDialog.add(formPanel, BorderLayout.CENTER);
+        rcaDialog.add(buttonPanel, BorderLayout.SOUTH);
+        rcaDialog.setVisible(true);
+    }
+
+    private void openPublishRcaDialog() {
+        // Load incidents where L3 has provided RCA (rca_provided = 1)
+        List<Incident> incidents = incidentDao.getAllIncidents();
+        java.util.List<Incident> publishable = new java.util.ArrayList<>();
+        for (Incident i : incidents) {
+            if (i.isRcaProvided()) {
+                publishable.add(i);
+            }
+        }
+
+        if (publishable.isEmpty()) {
+            JOptionPane.showMessageDialog(this,
+                    "No incidents with RCA provided by L3.",
+                    "Info",
+                    JOptionPane.INFORMATION_MESSAGE);
+            return;
+        }
+
+        // Dialog UI with table + RCA fields
+        JDialog dialog = new JDialog(this, "Publish RCA", true);
+        dialog.setSize(900, 600);
+        dialog.setLocationRelativeTo(this);
+        dialog.setLayout(new BorderLayout(10, 10));
+
+        // Top: table
+        String[] cols = { "ID", "Application", "Start Time", "Status", "Assigned To", "RCA Provided" };
+        DefaultTableModel model = new DefaultTableModel(cols, 0) {
+            @Override
+            public boolean isCellEditable(int r, int c) { return false; }
+        };
+        JTable table = new JTable(model);
+        table.setRowHeight(24);
+
+        for (Incident i : publishable) {
+            model.addRow(new Object[] {
+                    i.getId(),
+                    i.getApplicationName(),
+                    i.getIssueStartTime(),
+                    i.getStatus(),
+                    i.getAssignedToName() != null ? i.getAssignedToName() : "Not Assigned",
+                    "Yes"
+            });
+        }
+
+        JScrollPane tableScroll = new JScrollPane(table);
+        dialog.add(tableScroll, BorderLayout.NORTH);
+
+        // Center: RCA fields
+        JPanel formPanel = new JPanel(new GridLayout(1, 3, 10, 10));
+        formPanel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
+
+        JTextArea rootCauseArea = new JTextArea(6, 25);
+        rootCauseArea.setLineWrap(true);
+        rootCauseArea.setWrapStyleWord(true);
+        rootCauseArea.setBorder(BorderFactory.createTitledBorder("Root Cause"));
+        rootCauseArea.setEditable(false);
+
+        JTextArea permanentFixArea = new JTextArea(6, 25);
+        permanentFixArea.setLineWrap(true);
+        permanentFixArea.setWrapStyleWord(true);
+        permanentFixArea.setBorder(BorderFactory.createTitledBorder("Permanent Fix (from L3)"));
+        permanentFixArea.setEditable(false);
+
+        JTextArea preventiveArea = new JTextArea(6, 25);
+        preventiveArea.setLineWrap(true);
+        preventiveArea.setWrapStyleWord(true);
+        preventiveArea.setBorder(BorderFactory.createTitledBorder("Preventive Measures"));
+        preventiveArea.setEditable(false);
+
+        formPanel.add(new JScrollPane(rootCauseArea));
+        formPanel.add(new JScrollPane(permanentFixArea));
+        formPanel.add(new JScrollPane(preventiveArea));
+
+        dialog.add(formPanel, BorderLayout.CENTER);
+
+        // When user selects a row, load permanent solution from incident
+        // When user selects a row, load RCA from rca table (entered by L3)
+        table.getSelectionModel().addListSelectionListener(e -> {
+            if (!e.getValueIsAdjusting()) {
+                int row = table.getSelectedRow();
+                if (row >= 0) {
+                    int id = (int) model.getValueAt(row, 0);
+
+                    RcaDetails rca = incidentDao.getRcaForIncident(id);
+                    if (rca != null) {
+                        rootCauseArea.setText(
+                                rca.getRootCause() != null ? rca.getRootCause() : ""
+                        );
+                        permanentFixArea.setText(
+                                rca.getPermanentFix() != null ? rca.getPermanentFix() : ""
+                        );
+                        preventiveArea.setText(
+                                rca.getPreventiveMeasures() != null ? rca.getPreventiveMeasures() : ""
+                        );
+                    } else {
+                        rootCauseArea.setText("");
+                        permanentFixArea.setText("");
+                        preventiveArea.setText("");
+                    }
+                }
+            }
+        });
+
+        // Bottom buttons
+        JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 10));
+        JButton closeBtn = new JButton("Close");
+        JButton publishBtn = new JButton("Publish RCA");
+
+        closeBtn.addActionListener(e -> dialog.dispose());
+
+        publishBtn.addActionListener(e -> {
+            int row = table.getSelectedRow();
+            if (row == -1) {
+                JOptionPane.showMessageDialog(dialog,
+                        "Please select an incident.",
+                        "Selection Required",
+                        JOptionPane.WARNING_MESSAGE);
+                return;
+            }
+
+            int incidentId = (int) model.getValueAt(row, 0);
+            String root = rootCauseArea.getText().trim();
+            String perm = permanentFixArea.getText().trim();
+            String prev = preventiveArea.getText().trim();
+
+            if (root.isEmpty() || perm.isEmpty()) {
+                JOptionPane.showMessageDialog(dialog,
+                        "Root Cause and Permanent Fix are mandatory.",
+                        "Validation Error",
+                        JOptionPane.WARNING_MESSAGE);
+                return;
+            }
+
+            String sql = """
+            INSERT OR REPLACE INTO rca
+            (incident_id, root_cause, permanent_fix, preventive_measures,
+             created_by, created_at, published, published_date)
+            VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP, 1, ?)
+        """;
+
+            try (Connection conn = DatabaseConnection.getConnection();
+                 PreparedStatement pstmt = conn.prepareStatement(sql)) {
+
+                pstmt.setInt(1, incidentId);
+                pstmt.setString(2, root);
+                pstmt.setString(3, perm);
+                pstmt.setString(4, prev);
+                pstmt.setInt(5, currentUser.getId());
+
+                String publishedDate = LocalDateTime.now()
+                        .format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
+                pstmt.setString(6, publishedDate);
+
+                int rows2 = pstmt.executeUpdate();
+                if (rows2 > 0) {
+                    // Close incident when RCA published
+                    incidentDao.updateIncidentStatus(incidentId, "CLOSED", publishedDate);
+
+                    JOptionPane.showMessageDialog(dialog,
+                            "RCA published for Incident #" + incidentId,
+                            "Success",
+                            JOptionPane.INFORMATION_MESSAGE);
+
+                    dialog.dispose();
+                    refreshAllIncidentsTable();
+                    refreshMyIncidentsTable();
+                } else {
+                    JOptionPane.showMessageDialog(dialog,
+                            "Failed to publish RCA.",
+                            "Error",
+                            JOptionPane.ERROR_MESSAGE);
+                }
+
+            } catch (SQLException ex1) {
+                JOptionPane.showMessageDialog(dialog,
+                        "Database error while publishing RCA: " + ex1.getMessage(),
+                        "DB Error",
+                        JOptionPane.ERROR_MESSAGE);
+            }
+        });
+
+        buttonPanel.add(closeBtn);
+        buttonPanel.add(publishBtn);
+        dialog.add(buttonPanel, BorderLayout.SOUTH);
+
+        dialog.setVisible(true);
     }
 }

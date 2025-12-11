@@ -26,6 +26,7 @@ public class AdminDashboard extends JFrame {
     private User currentAdmin;
     private CardLayout cardLayout;
     private JPanel contentPanel;
+    private static final Color AXIS_BURGUNDY = new Color(151, 0, 70);
 
     public AdminDashboard(User adminUser) {
         userDao = new UserDao();
@@ -47,8 +48,8 @@ public class AdminDashboard extends JFrame {
             protected void paintComponent(Graphics g) {
                 super.paintComponent(g);
                 Graphics2D g2d = (Graphics2D) g;
-                Color color1 = new Color(248, 248, 255);
-                Color color2 = new Color(240, 248, 255);
+                Color color1 = new Color(255, 255, 255);
+                Color color2 = new Color(245, 230, 235);
                 GradientPaint gp = new GradientPaint(0, 0, color1, getWidth(), getHeight(), color2);
                 g2d.setPaint(gp);
                 g2d.fillRect(0, 0, getWidth(), getHeight());
@@ -57,7 +58,7 @@ public class AdminDashboard extends JFrame {
 
         // Header panel
         JPanel headerPanel = new JPanel(new BorderLayout());
-        headerPanel.setBackground(new Color(25, 25, 112));
+        headerPanel.setBackground(AXIS_BURGUNDY);
         headerPanel.setBorder(BorderFactory.createEmptyBorder(15, 25, 15, 25));
         headerPanel.setPreferredSize(new Dimension(1300, 100));
 
@@ -71,7 +72,7 @@ public class AdminDashboard extends JFrame {
 
         JLabel userLabel = new JLabel("Welcome, " + currentAdmin.getUsername() + " (" + currentAdmin.getFullName() + ")");
         userLabel.setFont(new Font("Segoe UI", Font.PLAIN, 14));
-        userLabel.setForeground(new Color(200, 200, 255));
+        userLabel.setForeground(new Color(245, 235, 240));
 
         welcomePanel.add(welcomeLabel);
         welcomePanel.add(userLabel);
@@ -115,7 +116,7 @@ public class AdminDashboard extends JFrame {
 
         // Navigation panel - CORRECTED: 6 buttons in original order
         JPanel navPanel = new JPanel(new BorderLayout(0, 0));
-        navPanel.setBackground(new Color(30, 30, 70));
+        navPanel.setBackground(AXIS_BURGUNDY.darker());
         navPanel.setPreferredSize(new Dimension(220, 0));
         navPanel.setBorder(BorderFactory.createEmptyBorder(20, 10, 20, 10));
 
@@ -127,7 +128,7 @@ public class AdminDashboard extends JFrame {
 
         // CORRECTED: Back to 6 buttons with proper order
         JPanel buttonPanel = new JPanel(new GridLayout(6, 1, 0, 15));
-        buttonPanel.setBackground(new Color(30, 30, 70));
+        buttonPanel.setBackground(AXIS_BURGUNDY.darker());
         buttonPanel.setBorder(BorderFactory.createEmptyBorder(20, 0, 20, 0));
 
         // Navigation buttons in original order
@@ -196,7 +197,7 @@ public class AdminDashboard extends JFrame {
 
         JLabel titleLabel = new JLabel("📊 ADMIN DASHBOARD OVERVIEW");
         titleLabel.setFont(new Font("Segoe UI", Font.BOLD, 24));
-        titleLabel.setForeground(new Color(25, 25, 112));
+        titleLabel.setForeground(AXIS_BURGUNDY);
         titleLabel.setHorizontalAlignment(SwingConstants.CENTER);
         titleLabel.setBorder(BorderFactory.createEmptyBorder(0, 0, 30, 0));
 

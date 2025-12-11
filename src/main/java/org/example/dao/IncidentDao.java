@@ -4,7 +4,9 @@ import org.example.database.DatabaseConnection;
 import org.example.model.Incident;
 
 import java.sql.*;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 
 public class IncidentDao {
@@ -192,17 +194,11 @@ public class IncidentDao {
 
     public boolean markRcaProvided(int incidentId) {
         String sql = "UPDATE incidents SET rca_provided = 1 WHERE id = ?";
-
         try (Connection conn = DatabaseConnection.getConnection();
-             PreparedStatement pstmt = conn.prepareStatement(sql)) {
-
-            pstmt.setInt(1, incidentId);
-
-            int result = pstmt.executeUpdate();
-            System.out.println("Marked RCA as provided for incident ID: " + incidentId);
-            return result > 0;
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, incidentId);
+            return ps.executeUpdate() > 0;
         } catch (SQLException e) {
-            System.out.println("Error marking RCA as provided: " + e.getMessage());
             e.printStackTrace();
             return false;
         }
@@ -300,4 +296,225 @@ public class IncidentDao {
 
         return incidents;
     }
+
+    // NEW METHOD: Calculate Turnaround Time (TAT)
+    public long calculateTAT(String startTime, String endTime) {
+        try {
+            SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm");
+            Date start = sdf.parse(startTime);
+            Date end = sdf.parse(endTime);
+
+            long diffInMillis = end.getTime() - start.getTime();
+            return diffInMillis / (1000 * 60); // Return minutes
+        } catch (Exception e) {
+            System.out.println("Error calculating TAT: " + e.getMessage());
+            return 0;
+        }
+    }
+
+    // NEW METHOD: Get incidents assigned to specific L3 user
+    public List<Incident> getIncidentsAssignedToUser(int userId) {
+        List<Incident> incidents = new ArrayList<>();
+        String sql = "SELECT i.*, u.username as created_by_name, u2.username as assigned_to_name " +
+                "FROM incidents i " +
+                "LEFT JOIN users u ON i.created_by = u.id " +
+                "LEFT JOIN users u2 ON i.assigned_to = u2.id " +
+                "WHERE i.assigned_to = ? " +
+                "ORDER BY i.issue_start_time DESC";
+
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+
+            pstmt.setInt(1, userId);
+            ResultSet rs = pstmt.executeQuery();
+
+            while (rs.next()) {
+                Incident incident = extractIncidentFromResultSet(rs);
+                incidents.add(incident);
+            }
+            System.out.println("Retrieved " + incidents.size() + " incidents assigned to user ID: " + userId);
+        } catch (SQLException e) {
+            System.out.println("Error getting incidents assigned to user: " + e.getMessage());
+            e.printStackTrace();
+
+            // Return empty list instead of null
+            return new ArrayList<>();
+        }
+
+        return incidents;
+    }
+
+    // NEW METHOD: Get incidents by assigned user and status
+    public List<Incident> getIncidentsByAssignedUserAndStatus(int userId, String status) {
+        List<Incident> incidents = new ArrayList<>();
+        String sql = "SELECT i.*, u.username as created_by_name, u2.username as assigned_to_name " +
+                "FROM incidents i " +
+                "LEFT JOIN users u ON i.created_by = u.id " +
+                "LEFT JOIN users u2 ON i.assigned_to = u2.id " +
+                "WHERE i.assigned_to = ? AND i.status = ? " +
+                "ORDER BY i.issue_start_time DESC";
+
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+
+            pstmt.setInt(1, userId);
+            pstmt.setString(2, status);
+            ResultSet rs = pstmt.executeQuery();
+
+            while (rs.next()) {
+                Incident incident = extractIncidentFromResultSet(rs);
+                incidents.add(incident);
+            }
+            System.out.println("Retrieved " + incidents.size() + " incidents with status " + status + " for user ID: " + userId);
+        } catch (SQLException e) {
+            System.out.println("Error getting incidents by assigned user and status: " + e.getMessage());
+            e.printStackTrace();
+
+            // Return empty list instead of null
+            return new ArrayList<>();
+        }
+
+        return incidents;
+    }
+
+    // NEW METHOD: Get average TAT for a specific user
+    public long getAverageTATForUser(int userId) {
+        String sql = "SELECT issue_start_time, issue_end_time FROM incidents " +
+                "WHERE assigned_to = ? AND status = 'CLOSED' AND issue_end_time IS NOT NULL";
+
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+
+            pstmt.setInt(1, userId);
+            ResultSet rs = pstmt.executeQuery();
+
+            long totalTAT = 0;
+            int count = 0;
+
+            while (rs.next()) {
+                String startTime = rs.getString("issue_start_time");
+                String endTime = rs.getString("issue_end_time");
+
+                if (startTime != null && endTime != null) {
+                    long tat = calculateTAT(startTime, endTime);
+                    totalTAT += tat;
+                    count++;
+                }
+            }
+
+            return count > 0 ? totalTAT / count : 0;
+        } catch (SQLException e) {
+            System.out.println("Error calculating average TAT for user: " + e.getMessage());
+            e.printStackTrace();
+            return 0;
+        }
+    }
+
+    // NEW METHOD: Get incidents without RCA
+    public List<Incident> getIncidentsWithoutRCA() {
+        List<Incident> incidents = new ArrayList<>();
+        String sql = "SELECT i.*, u.username as created_by_name, u2.username as assigned_to_name " +
+                "FROM incidents i " +
+                "LEFT JOIN users u ON i.created_by = u.id " +
+                "LEFT JOIN users u2 ON i.assigned_to = u2.id " +
+                "WHERE i.status = 'CLOSED' AND i.rca_provided = 0 " +
+                "ORDER BY i.issue_end_time DESC";
+
+        try (Connection conn = DatabaseConnection.getConnection();
+             Statement stmt = conn.createStatement();
+             ResultSet rs = stmt.executeQuery(sql)) {
+
+            while (rs.next()) {
+                Incident incident = extractIncidentFromResultSet(rs);
+                incidents.add(incident);
+            }
+            System.out.println("Retrieved " + incidents.size() + " incidents without RCA.");
+        } catch (SQLException e) {
+            System.out.println("Error getting incidents without RCA: " + e.getMessage());
+            e.printStackTrace();
+
+            // Return empty list instead of null
+            return new ArrayList<>();
+        }
+
+        return incidents;
+    }
+
+    // NEW METHOD: Get incidents with RCA provided
+    public List<Incident> getIncidentsWithRCA() {
+        List<Incident> incidents = new ArrayList<>();
+        String sql = "SELECT i.*, u.username as created_by_name, u2.username as assigned_to_name " +
+                "FROM incidents i " +
+                "LEFT JOIN users u ON i.created_by = u.id " +
+                "LEFT JOIN users u2 ON i.assigned_to = u2.id " +
+                "WHERE i.rca_provided = 1 " +
+                "ORDER BY i.issue_end_time DESC";
+
+        try (Connection conn = DatabaseConnection.getConnection();
+             Statement stmt = conn.createStatement();
+             ResultSet rs = stmt.executeQuery(sql)) {
+
+            while (rs.next()) {
+                Incident incident = extractIncidentFromResultSet(rs);
+                incidents.add(incident);
+            }
+            System.out.println("Retrieved " + incidents.size() + " incidents with RCA.");
+        } catch (SQLException e) {
+            System.out.println("Error getting incidents with RCA: " + e.getMessage());
+            e.printStackTrace();
+
+            // Return empty list instead of null
+            return new ArrayList<>();
+        }
+
+        return incidents;
+    }
+
+    public boolean saveOrUpdateRca(int incidentId,
+                                   String rootCause,
+                                   String permanentFix,
+                                   String preventive,
+                                   int createdBy) {
+        String sql = """
+        INSERT OR REPLACE INTO rca
+          (incident_id, root_cause, permanent_fix, preventive_measures,
+           created_by, created_at, published, published_date)
+        VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP, 0, NULL)
+        """;
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, incidentId);
+            ps.setString(2, rootCause);
+            ps.setString(3, permanentFix);
+            ps.setString(4, preventive);
+            ps.setInt(5, createdBy);
+            return ps.executeUpdate() > 0;
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
+
+    public RcaDetails getRcaForIncident(int incidentId) {
+        String sql = "SELECT root_cause, permanent_fix, preventive_measures " +
+                "FROM rca WHERE incident_id = ?";
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, incidentId);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    RcaDetails r = new RcaDetails();
+                    r.setRootCause(rs.getString("root_cause"));
+                    r.setPermanentFix(rs.getString("permanent_fix"));
+                    r.setPreventiveMeasures(rs.getString("preventive_measures"));
+                    return r;
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
+
 }
