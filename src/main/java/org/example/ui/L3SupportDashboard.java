@@ -535,28 +535,32 @@ public class L3SupportDashboard extends JFrame {
         titleLabel.setForeground(BURGUNDY_PRIMARY);
         titleLabel.setHorizontalAlignment(SwingConstants.CENTER);
         titleLabel.setBorder(BorderFactory.createEmptyBorder(0, 0, 30, 0));
+        rcaCard.add(titleLabel, BorderLayout.NORTH);
 
-        // Get incidents that need RCA
-        List<Incident> incidentsNeedingRca = incidentDao.getAllIncidents();
-        incidentsNeedingRca.removeIf(i -> i.isRcaProvided() || !"CLOSED".equals(i.getStatus()));
+        // Get incidents where this L3 has provided RCA and status is still ASSIGNED
+        List<Incident> assignedIncidents = incidentDao.getIncidentsByStatus("ASSIGNED");
+        List<Incident> myRcaIncidents = assignedIncidents.stream()
+                .filter(i -> i.getAssignedTo() != null && i.getAssignedTo() == currentUser.getId())
+                .filter(Incident::isRcaProvided)   // RCA already given
+                .toList();
 
-        if (incidentsNeedingRca.isEmpty()) {
-            JLabel noRcaLabel = new JLabel("No incidents requiring RCA at the moment.");
+        if (myRcaIncidents.isEmpty()) {
+            JLabel noRcaLabel = new JLabel("No incidents where RCA is provided and pending closure.");
             noRcaLabel.setFont(new Font("Segoe UI", Font.PLAIN, 16));
             noRcaLabel.setHorizontalAlignment(SwingConstants.CENTER);
             rcaCard.add(noRcaLabel, BorderLayout.CENTER);
         } else {
-            // Create table for incidents needing RCA
-            String[] columns = {"ID", "Application", "Start Time", "Closed Time", "Problem", "TAT (min)"};
-            DefaultTableModel rcaTableModel = new DefaultTableModel(columns, 0);
+            String[] columns = {"ID", "Application", "Start Time", "Problem", "RCA Provided", "Status"};
+            DefaultTableModel rcaTableModel = new DefaultTableModel(columns, 0) {
+                @Override
+                public boolean isCellEditable(int row, int column) {
+                    return false;
+                }
+            };
 
-            for (Incident incident : incidentsNeedingRca) {
-                long tat = incidentDao.calculateTAT(incident.getIssueStartTime(),
-                        incident.getIssueEndTime() != null ? incident.getIssueEndTime() :
-                                new SimpleDateFormat("yyyy-MM-dd HH:mm").format(new Date()));
-
+            for (Incident incident : myRcaIncidents) {
                 String problem = incident.getProblemStatement();
-                if (problem.length() > 50) {
+                if (problem != null && problem.length() > 50) {
                     problem = problem.substring(0, 47) + "...";
                 }
 
@@ -564,23 +568,27 @@ public class L3SupportDashboard extends JFrame {
                         incident.getId(),
                         incident.getApplicationName(),
                         incident.getIssueStartTime(),
-                        incident.getIssueEndTime(),
                         problem,
-                        tat
+                        incident.isRcaProvided() ? "Yes" : "No",
+                        incident.getStatus()
                 });
             }
 
             JTable rcaTable = new JTable(rcaTableModel);
             rcaTable.setFont(new Font("Segoe UI", Font.PLAIN, 12));
             rcaTable.setRowHeight(25);
+            rcaTable.getTableHeader().setFont(new Font("Segoe UI", Font.BOLD, 12));
+                    rcaTable.getTableHeader().setBackground(new Color(240, 248, 255));
+            rcaTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
 
             JScrollPane scrollPane = new JScrollPane(rcaTable);
             rcaCard.add(scrollPane, BorderLayout.CENTER);
         }
 
-        rcaCard.add(titleLabel, BorderLayout.NORTH);
         return rcaCard;
     }
+
+
 
     private JPanel createResolvedIncidentsCard() {
         JPanel resolvedCard = new JPanel(new BorderLayout(20, 20));

@@ -285,7 +285,9 @@ public class  IncidentManagerDashboard extends JFrame {
 
         GridBagConstraints gbc = new GridBagConstraints();
         gbc.insets = new Insets(10, 10, 10, 10);
-        gbc.fill = GridBagConstraints.HORIZONTAL;
+        gbc.fill = GridBagConstraints.BOTH;   // allow vertical growth
+        gbc.weightx = 1.0;
+        gbc.weighty = 0.0;
 
         // Application Name
         gbc.gridx = 0;
@@ -317,6 +319,7 @@ public class  IncidentManagerDashboard extends JFrame {
         gbc.gridx = 0;
         gbc.gridy = 1;
         gbc.anchor = GridBagConstraints.EAST;
+        gbc.weighty = 0.0;
         JLabel startTimeLabel = new JLabel("Issue Start Time:");
         startTimeLabel.setFont(new Font("Segoe UI", Font.BOLD, 14));
         startTimeLabel.setForeground(new Color(50, 50, 50));
@@ -335,7 +338,8 @@ public class  IncidentManagerDashboard extends JFrame {
         // Problem Statement
         gbc.gridx = 0;
         gbc.gridy = 2;
-        gbc.anchor = GridBagConstraints.EAST;
+        gbc.anchor = GridBagConstraints.NORTHEAST;
+        gbc.weighty = 0.0;
         JLabel problemLabel = new JLabel("Problem Statement:");
         problemLabel.setFont(new Font("Segoe UI", Font.BOLD, 14));
         problemLabel.setForeground(new Color(50, 50, 50));
@@ -343,18 +347,22 @@ public class  IncidentManagerDashboard extends JFrame {
 
         gbc.gridx = 1;
         gbc.anchor = GridBagConstraints.WEST;
-        JTextArea problemArea = new JTextArea(4, 40);
+        gbc.weighty = 0.2; // give vertical space
+        JTextArea problemArea = new JTextArea();
+        problemArea.setRows(5);          // taller box
+        problemArea.setColumns(40);
         problemArea.setFont(new Font("Segoe UI", Font.PLAIN, 14));
         problemArea.setLineWrap(true);
         problemArea.setWrapStyleWord(true);
         JScrollPane problemScroll = new JScrollPane(problemArea);
-        problemScroll.setPreferredSize(new Dimension(300, 100));
+        problemScroll.setVerticalScrollBarPolicy(ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED);
         formPanel.add(problemScroll, gbc);
 
         // Business Impact
         gbc.gridx = 0;
         gbc.gridy = 3;
-        gbc.anchor = GridBagConstraints.EAST;
+        gbc.anchor = GridBagConstraints.NORTHEAST;
+        gbc.weighty = 0.0;
         JLabel impactLabel = new JLabel("Business Impact:");
         impactLabel.setFont(new Font("Segoe UI", Font.BOLD, 14));
         impactLabel.setForeground(new Color(50, 50, 50));
@@ -362,18 +370,22 @@ public class  IncidentManagerDashboard extends JFrame {
 
         gbc.gridx = 1;
         gbc.anchor = GridBagConstraints.WEST;
-        JTextArea impactArea = new JTextArea(4, 40);
+        gbc.weighty = 0.2;
+        JTextArea impactArea = new JTextArea();
+        impactArea.setRows(5);
+        impactArea.setColumns(40);
         impactArea.setFont(new Font("Segoe UI", Font.PLAIN, 14));
         impactArea.setLineWrap(true);
         impactArea.setWrapStyleWord(true);
         JScrollPane impactScroll = new JScrollPane(impactArea);
-        impactScroll.setPreferredSize(new Dimension(300, 100));
+        impactScroll.setVerticalScrollBarPolicy(ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED);
         formPanel.add(impactScroll, gbc);
 
         // Temporary Solution
         gbc.gridx = 0;
         gbc.gridy = 4;
-        gbc.anchor = GridBagConstraints.EAST;
+        gbc.anchor = GridBagConstraints.NORTHEAST;
+        gbc.weighty = 0.0;
         JLabel tempSolutionLabel = new JLabel("Temporary Solution:");
         tempSolutionLabel.setFont(new Font("Segoe UI", Font.BOLD, 14));
         tempSolutionLabel.setForeground(new Color(50, 50, 50));
@@ -381,15 +393,24 @@ public class  IncidentManagerDashboard extends JFrame {
 
         gbc.gridx = 1;
         gbc.anchor = GridBagConstraints.WEST;
-        JTextArea tempSolutionArea = new JTextArea(4, 40);
+        gbc.weighty = 0.2;
+        JTextArea tempSolutionArea = new JTextArea();
+        tempSolutionArea.setRows(5);
+        tempSolutionArea.setColumns(40);
         tempSolutionArea.setFont(new Font("Segoe UI", Font.PLAIN, 14));
         tempSolutionArea.setLineWrap(true);
         tempSolutionArea.setWrapStyleWord(true);
         JScrollPane tempSolutionScroll = new JScrollPane(tempSolutionArea);
-        tempSolutionScroll.setPreferredSize(new Dimension(300, 100));
+        tempSolutionScroll.setVerticalScrollBarPolicy(ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED);
         formPanel.add(tempSolutionScroll, gbc);
 
         // Button panel
+        gbc.gridx = 0;
+        gbc.gridy = 5;
+        gbc.gridwidth = 2;
+        gbc.weighty = 0.0;
+        gbc.anchor = GridBagConstraints.CENTER;
+
         JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 20, 10));
         buttonPanel.setOpaque(false);
         buttonPanel.setBorder(BorderFactory.createEmptyBorder(20, 0, 0, 0));
@@ -414,13 +435,15 @@ public class  IncidentManagerDashboard extends JFrame {
 
         buttonPanel.add(createButton);
         buttonPanel.add(clearButton);
+        formPanel.add(buttonPanel, gbc);
 
         createIncidentCard.add(titleLabel, BorderLayout.NORTH);
         createIncidentCard.add(formPanel, BorderLayout.CENTER);
-        createIncidentCard.add(buttonPanel, BorderLayout.SOUTH);
 
         return createIncidentCard;
     }
+
+
 
     private JPanel createAllIncidentsCard() {
         JPanel allIncidentsCard = new JPanel(new BorderLayout(20, 20));
